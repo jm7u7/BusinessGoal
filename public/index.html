@@ -453,7 +453,7 @@ async function iniciar() {
   const m = hoy.getFullYear() === 2026 ? hoy.getMonth() + 1 : 12;
   $('#mes').innerHTML = MESES.map((n, i) => `<option value="${i + 1}" ${i + 1 === m ? 'selected' : ''}>${n}</option>`).join('');
   st.me.sedes.forEach((s) => st.sel.add(s.id));
-  if (st.me.sedes.length === 1) { document.body.classList.add('uno'); $('#chipSede').textContent = 'Sede · ' + st.me.sedes[0].nombre; }
+  if (st.me.sedes.length <= 1) { document.body.classList.add('uno'); $('#chipSede').textContent = st.me.sedes.length ? 'Sede · ' + st.me.sedes[0].nombre : 'Sin sede asignada · pide acceso al administrador'; }
   pintarSedes();
   // mes: cuadrícula de 12 botones (móvil) enlazada al selector (escritorio)
   $('#mgrid').innerHTML = MESES.map((n, i) => `<button data-m="${i + 1}">${n.slice(0, 3)}</button>`).join('');
@@ -488,7 +488,7 @@ const msg = (t, e) => { $('#umsg').textContent = t; $('#umsg').className = 'umsg
 
 function pintarUsuarios(lista) {
   $('#ulist').innerHTML = lista.map((u) => {
-    const tags = u.sedes ? u.sedes.map((id) => `<span class="tag">${esc(nombreSede(id))}</span>`).join('') : '<span class="tag a">Todas</span>';
+    const tags = u.sedes && !u.sedes.length ? '<span class="tag">Sin sede</span>' : u.sedes ? u.sedes.map((id) => `<span class="tag">${esc(nombreSede(id))}</span>`).join('') : '<span class="tag a">Todas</span>';
     const yo = u.usuario === st.me.usuario;
     return `<div class="uw"><div class="ur"><div>${esc(u.nombre)}<small>${esc(u.usuario)}</small></div><div class="tags">${tags}</div>
       <div class="bt"><button class="ed" data-e="${esc(u.usuario)}">Editar</button>${yo ? '<span class="tu">Tú</span>' : `<button data-u="${esc(u.usuario)}">Eliminar</button>`}</div></div></div>`;
