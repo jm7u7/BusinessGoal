@@ -453,7 +453,7 @@ async function iniciar() {
 }
 
 /* ---- administración de usuarios por sede (solo admin) ---- */
-const aj = async (u, o) => { const r = await fetch(u, o); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Error'); return d; };
+const aj = async (u, o) => { const r = await fetch(u, o); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('Error ' + r.status + ' del servidor')); return d; };
 function pintarUsuarios(lista) {
   $('#ulist').innerHTML = lista.map((u) => {
     const sede = u.sedes ? u.sedes.map((id) => (st.me.sedes.find((s) => s.id === id) || { nombre: id }).nombre).join(', ') : 'Todas';
