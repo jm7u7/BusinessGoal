@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { PAQUETE_SEDE, laserMes, paquetesDetalle, SEDES, ventasDiarias, metaMes, ultimaActualizacion } = require('./data');
-const { verificar, listarUsuarios, crearUsuario, eliminarUsuario, crearSesion, usuarioDeSesion, DURACION_MS } = require('./usuarios');
+const { verificar, listarUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario, crearSesion, usuarioDeSesion, DURACION_MS } = require('./usuarios');
 
 const json = (res, code, obj, extra = {}) => {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
@@ -109,6 +109,7 @@ async function api(req, res, url) {
     try {
       if (req.method === 'GET') return json(res, 200, { usuarios: await listarUsuarios() });
       if (req.method === 'POST') { await crearUsuario(await leerBody(req)); return json(res, 200, { usuarios: await listarUsuarios() }); }
+      if (req.method === 'PATCH') { await actualizarUsuario(await leerBody(req), u.usuario); return json(res, 200, { usuarios: await listarUsuarios() }); }
       if (req.method === 'DELETE') {
         const quien = url.searchParams.get('usuario');
         await eliminarUsuario(quien, u.usuario); // sus sesiones dejan de valer: la cookie se valida contra la tabla

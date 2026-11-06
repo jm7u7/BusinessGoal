@@ -82,6 +82,24 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .ur .tag{font-size:13px;background:var(--lime);color:var(--green);border-radius:99px;padding:4px 12px}
 .ur .tag.a{background:var(--green);color:#fff}
 .ur .tu{font-size:13px;color:var(--mut);padding:0 8px}
+.ur .tags{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}.ur .bt{display:flex;gap:6px;align-items:center}
+.ur button.ed{background:var(--lime);color:var(--green)}.ur button.ed:hover{background:var(--green);color:#fff}
+.uw{display:flex;flex-direction:column;gap:6px}
+.ue{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px;border-radius:18px;background:var(--soft);border:1.5px solid var(--green);animation:up .22s cubic-bezier(.3,1.3,.5,1)}
+.ue input{width:100%;border:1.5px solid var(--chip);background:var(--card);color:var(--ink);border-radius:14px;padding:11px 14px;font:inherit;font-size:15px;outline:0}
+.ue input:focus{border-color:var(--green)}
+.ue .acc{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+.ue .acc button{border:0;border-radius:14px;padding:10px 18px;font:inherit;font-size:14px;cursor:pointer;background:var(--track);color:var(--ink)}
+.ue .acc .ok{background:var(--green);color:#fff}
+.uform .lbl,.ue .lbl{grid-column:1/-1;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:2px 0 -2px}
+.chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.uch{border:1.5px solid var(--chip);background:var(--card);color:var(--ink);border-radius:99px;padding:9px 16px;font:inherit;font-size:14px;cursor:pointer;transition:transform .15s,background .15s,color .15s}
+.uch:hover{transform:translateY(-2px)}.uch:active{transform:scale(.96)}
+.uch.on{background:var(--green);border-color:var(--green);color:#fff}.uch.ca.on{background:var(--lime);border-color:var(--lime);color:var(--green)}
+.chipsede{display:none;align-items:center;gap:6px;background:var(--lime);color:var(--green);border-radius:99px;padding:5px 14px;font-size:14px;font-weight:500;margin-bottom:8px}
+body.uno .chipsede{display:inline-flex}
+body.uno .fl.fs,body.uno .bar [data-s=sedes]{display:none!important}
+@media (max-width:560px){.ur{grid-template-columns:1fr auto}.ur .tags{grid-column:1/-1;justify-content:flex-start;order:3}.ue{grid-template-columns:1fr}}
 .ur button{border:0;background:var(--track);color:var(--ink);border-radius:12px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
 .ur button:hover{background:var(--coral2);color:#7a2e1c}
 @media (max-width:560px){.uform{grid-template-columns:1fr}}
@@ -327,12 +345,12 @@ svg.ch{width:100%;display:block;margin-top:10px;overflow:visible}
   <div class="modal" id="modal" hidden>
     <div class="mbox" role="dialog" aria-labelledby="mt">
       <div class="row"><h2 id="mt">Usuarios por sede</h2><button class="rb" id="mx" aria-label="Cerrar">✕</button></div>
-      <div class="sub">Cada usuario solo verá la sede que le asignes.</div>
+      <div class="sub">Cada usuario solo verá las sedes que le asignes. Puedes darle varias.</div>
       <form id="fu" class="uform">
         <input id="un" placeholder="Nombre (ej. Gerente Lince)" required maxlength="60">
         <input id="uu" placeholder="Usuario (ej. lince2)" required autocapitalize="none" maxlength="30">
         <input id="uc" type="password" placeholder="Clave (mínimo 6)" required minlength="6" autocomplete="new-password">
-        <select id="us" required></select>
+        <div class="lbl">Qué sedes puede ver</div><div class="chips" id="uchips"></div>
         <button class="go">Crear usuario</button>
       </form>
       <div id="umsg" class="umsg" role="status"></div>
@@ -342,7 +360,7 @@ svg.ch{width:100%;display:block;margin-top:10px;overflow:visible}
   <main>
     <img class="logo mlogo" src="/logo-limablue.png" alt="limablue">
     <div class="hero">
-      <div><small id="fecha"></small><h1 id="saludo"></h1></div>
+      <div><span class="chipsede" id="chipSede"></span><small id="fecha"></small><h1 id="saludo"></h1></div>
       <div class="rt">
         <div class="dias"><small id="dLbl">Días que faltan</small><b id="dNum"></b><span>para acabar el mes (sin domingos)</span></div>
         <div class="next"><small>Meta del mes</small><b id="nMeta"></b><span id="nSub"></span></div>
@@ -435,6 +453,7 @@ async function iniciar() {
   const m = hoy.getFullYear() === 2026 ? hoy.getMonth() + 1 : 12;
   $('#mes').innerHTML = MESES.map((n, i) => `<option value="${i + 1}" ${i + 1 === m ? 'selected' : ''}>${n}</option>`).join('');
   st.me.sedes.forEach((s) => st.sel.add(s.id));
+  if (st.me.sedes.length === 1) { document.body.classList.add('uno'); $('#chipSede').textContent = 'Sede · ' + st.me.sedes[0].nombre; }
   pintarSedes();
   // mes: cuadrícula de 12 botones (móvil) enlazada al selector (escritorio)
   $('#mgrid').innerHTML = MESES.map((n, i) => `<button data-m="${i + 1}">${n.slice(0, 3)}</button>`).join('');
@@ -454,19 +473,54 @@ async function iniciar() {
 
 /* ---- administración de usuarios por sede (solo admin) ---- */
 const aj = async (u, o) => { const r = await fetch(u, o); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('Error ' + r.status + ' del servidor')); return d; };
+const nombreSede = (id) => (st.me.sedes.find((s) => s.id === id) || { nombre: id }).nombre;
+// chips de sedes: elegir una o varias; «Administrador» excluye a las demás
+const chipsHTML = (sel) => st.me.sedes.map((s) => `<button type="button" class="uch ${sel.includes(s.id) ? 'on' : ''}" data-id="${s.id}">${esc(s.nombre)}</button>`).join('')
+  + `<button type="button" class="uch ca ${sel.includes('*') ? 'on' : ''}" data-id="*">Administrador · todas</button>`;
+function chipsActivar(box) {
+  box.querySelectorAll('.uch').forEach((b) => b.onclick = () => {
+    if (b.dataset.id === '*') { const on = !b.classList.contains('on'); box.querySelectorAll('.uch').forEach((x) => x.classList.remove('on')); b.classList.toggle('on', on); }
+    else { box.querySelector('[data-id="*"]').classList.remove('on'); b.classList.toggle('on'); }
+  });
+}
+const chipsLeer = (box) => [...box.querySelectorAll('.uch.on')].map((b) => b.dataset.id);
+const msg = (t, e) => { $('#umsg').textContent = t; $('#umsg').className = 'umsg' + (e ? ' e' : ''); };
+
 function pintarUsuarios(lista) {
   $('#ulist').innerHTML = lista.map((u) => {
-    const sede = u.sedes ? u.sedes.map((id) => (st.me.sedes.find((s) => s.id === id) || { nombre: id }).nombre).join(', ') : 'Todas';
-    return `<div class="ur"><div>${esc(u.nombre)}<small>${esc(u.usuario)}</small></div><span class="tag ${u.sedes ? '' : 'a'}">${esc(sede)}</span>${u.usuario !== st.me.usuario ? `<button data-u="${esc(u.usuario)}">Eliminar</button>` : '<span class="tu">Tú</span>'}</div>`;
+    const tags = u.sedes ? u.sedes.map((id) => `<span class="tag">${esc(nombreSede(id))}</span>`).join('') : '<span class="tag a">Todas</span>';
+    const yo = u.usuario === st.me.usuario;
+    return `<div class="uw"><div class="ur"><div>${esc(u.nombre)}<small>${esc(u.usuario)}</small></div><div class="tags">${tags}</div>
+      <div class="bt"><button class="ed" data-e="${esc(u.usuario)}">Editar</button>${yo ? '<span class="tu">Tú</span>' : `<button data-u="${esc(u.usuario)}">Eliminar</button>`}</div></div></div>`;
   }).join('');
   $('#ulist').querySelectorAll('button[data-u]').forEach((b) => b.onclick = async () => {
     if (!confirm('¿Eliminar al usuario ' + b.dataset.u + '?')) return;
     try { pintarUsuarios((await aj('/api/admin/usuarios?usuario=' + encodeURIComponent(b.dataset.u), { method: 'DELETE' })).usuarios); msg('Usuario eliminado'); } catch (e) { msg(e.message, 1); }
   });
+  $('#ulist').querySelectorAll('button[data-e]').forEach((b) => b.onclick = () => editarUsuario(lista.find((x) => x.usuario === b.dataset.e), b.closest('.uw')));
 }
-const msg = (t, e) => { $('#umsg').textContent = t; $('#umsg').className = 'umsg' + (e ? ' e' : ''); };
+// panel de edición debajo del usuario: nombre, clave nueva (opcional) y sedes
+function editarUsuario(u, w) {
+  const abierto = w.querySelector('.ue');
+  document.querySelectorAll('#ulist .ue').forEach((x) => x.remove());
+  if (abierto) return;
+  const e = document.createElement('div');
+  e.className = 'ue';
+  e.innerHTML = `<input class="en" value="${esc(u.nombre)}" maxlength="60" placeholder="Nombre"><input class="ec" type="password" placeholder="Clave nueva (opcional)" autocomplete="new-password">
+    <div class="lbl">Qué sedes puede ver</div><div class="chips">${chipsHTML(u.sedes || ['*'])}</div>
+    <div class="acc"><button type="button" class="no">Cancelar</button><button type="button" class="ok">Guardar cambios</button></div>`;
+  w.appendChild(e);
+  chipsActivar(e.querySelector('.chips'));
+  e.querySelector('.no').onclick = () => e.remove();
+  e.querySelector('.ok').onclick = async () => {
+    try {
+      const d = await aj('/api/admin/usuarios', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: u.usuario, nombre: e.querySelector('.en').value, clave: e.querySelector('.ec').value, sedes: chipsLeer(e.querySelector('.chips')) }) });
+      pintarUsuarios(d.usuarios); msg('Cambios guardados: ' + u.usuario);
+    } catch (er) { msg(er.message, 1); }
+  };
+}
 async function abrirAdmin() {
-  $('#us').innerHTML = '<option value="">Sede del usuario…</option>' + st.me.sedes.map((s) => `<option value="${s.id}">${esc(s.nombre)}</option>`).join('') + '<option value="*">Administrador (todas las sedes)</option>';
+  $('#uchips').innerHTML = chipsHTML([]); chipsActivar($('#uchips'));
   msg(''); $('#modal').hidden = false;
   try { pintarUsuarios((await aj('/api/admin/usuarios')).usuarios); } catch (e) { msg(e.message, 1); }
 }
@@ -476,8 +530,8 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#modal').hidden 
 $('#fu').onsubmit = async (e) => {
   e.preventDefault();
   try {
-    const d = await aj('/api/admin/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: $('#un').value, usuario: $('#uu').value, clave: $('#uc').value, sede: $('#us').value }) });
-    pintarUsuarios(d.usuarios); msg('Usuario creado: ' + $('#uu').value.toLowerCase()); $('#fu').reset();
+    const d = await aj('/api/admin/usuarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: $('#un').value, usuario: $('#uu').value, clave: $('#uc').value, sedes: chipsLeer($('#uchips')) }) });
+    pintarUsuarios(d.usuarios); msg('Usuario creado: ' + $('#uu').value.toLowerCase()); $('#fu').reset(); $('#uchips').innerHTML = chipsHTML([]); chipsActivar($('#uchips'));
   } catch (er) { msg(er.message, 1); }
 };
 

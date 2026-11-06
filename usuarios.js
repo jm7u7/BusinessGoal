@@ -45,18 +45,48 @@ async function verificar(usuario, clave) {
 }
 const listarUsuarios = async () => (await todos()).map(({ usuario, nombre, sedes }) => ({ usuario, nombre, sedes }));
 
-async function crearUsuario({ usuario, nombre, clave, sede }) {
+// Normaliza las sedes pedidas: '*' o ['*'] = administrador (null); si no, una lista de ids válidos.
+function normalizarSedes(pedidas) {
+  const arr = [].concat(pedidas || []).filter(Boolean);
+  if (arr.includes('*')) return null;
+  if (!arr.length || !arr.every((id) => SEDES.some((s) => s.id === id))) throw new Error('Elige al menos una sede o «Administrador»');
+  return [...new Set(arr)];
+}
+
+async function crearUsuario({ usuario, nombre, clave, sede, sedes }) {
   usuario = String(usuario || '').trim().toLowerCase(); nombre = String(nombre || '').trim().slice(0, 60); clave = String(clave || '');
   if (!/^[a-z0-9._-]{3,30}$/.test(usuario)) throw new Error('Usuario: 3 a 30 letras minúsculas, números, punto, guion o guion bajo');
   if (!nombre) throw new Error('Escribe el nombre');
   if (clave.length < 6) throw new Error('La clave debe tener al menos 6 caracteres');
-  const esAdmin = sede === '*'; // '*' = administrador: ve todas las sedes y puede crear usuarios
-  if (!esAdmin && !SEDES.some((s) => s.id === sede)) throw new Error('Elige una sede o «Administrador»');
+  const lista = normalizarSedes(sedes || sede); // null = administrador: ve todas las sedes y puede crear usuarios
   soltar();
   if (await buscar(usuario)) throw new Error('Ese usuario ya existe');
   const { salt, hash } = hashClave(clave);
   await neon.query('INSERT INTO bg_usuarios (usuario, nombre, sedes, salt, hash) VALUES ($1,$2,$3,$4,$5)',
-    [usuario, nombre, esAdmin ? null : JSON.stringify([sede]), salt, hash]);
+    [usuario, nombre, lista ? JSON.stringify(lista) : null, salt, hash]);
+  soltar();
+}
+
+// Edita nombre, sedes/permiso y (opcional) clave. Los cambios de sede rigen en menos de 15 s: la sesión lee la tabla.
+async function actualizarUsuario({ usuario, nombre, clave, sedes }, actual) {
+  soltar();
+  const lista = await todos();
+  const u = lista.find((x) => x.usuario === String(usuario || '').toLowerCase());
+  if (!u) throw new Error('No existe');
+  nombre = String(nombre ?? u.nombre).trim().slice(0, 60);
+  if (!nombre) throw new Error('Escribe el nombre');
+  const nuevas = sedes === undefined ? u.sedes : normalizarSedes(sedes);
+  if (!u.sedes && nuevas) {
+    if (u.usuario === actual) throw new Error('No puedes quitarte el permiso de administrador');
+    if (lista.filter((x) => !x.sedes).length <= 1) throw new Error('Debe quedar al menos un administrador');
+  }
+  let { salt, hash } = u;
+  if (clave) {
+    if (String(clave).length < 6) throw new Error('La clave debe tener al menos 6 caracteres');
+    ({ salt, hash } = hashClave(clave));
+  }
+  await neon.query('UPDATE bg_usuarios SET nombre=$2, sedes=$3, salt=$4, hash=$5 WHERE usuario=$1',
+    [u.usuario, nombre, nuevas ? JSON.stringify(nuevas) : null, salt, hash]);
   soltar();
 }
 
@@ -92,4 +122,4 @@ async function usuarioDeSesion(token) {
   return u ? { usuario: u.usuario, nombre: u.nombre, sedes: u.sedes } : null;
 }
 
-module.exports = { verificar, listarUsuarios, crearUsuario, eliminarUsuario, crearSesion, usuarioDeSesion, DURACION_MS };
+module.exports = { verificar, listarUsuarios, crearUsuario, actualizarUsuario, eliminarUsuario, crearSesion, usuarioDeSesion, DURACION_MS };
