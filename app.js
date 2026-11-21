@@ -22,6 +22,7 @@ const IPS_SEDE = (process.env.SEDES_IP || '').split(',').map((x) => x.trim().spl
 const ipCliente = (req) => String((process.env.VERCEL && (req.headers['x-vercel-forwarded-for'] || req.headers['x-real-ip'])) || req.socket.remoteAddress || '').split(',')[0].trim().replace(/^::ffff:/, '');
 function usuarioPorIp(req) {
   const ip = ipCliente(req), m = IPS_SEDE.find((x) => ip.startsWith(x.pre));
+  if (m && m.id === '*') return { usuario: 'ip:todas', nombre: 'Todas las sedes', sedes: SEDES.map((x) => x.id), porIp: true }; // ve todo, pero no es administrador
   const s = m && SEDES.find((x) => x.id === m.id);
   return s ? { usuario: 'ip:' + s.id, nombre: 'Sede ' + s.nombre, sedes: [s.id], porIp: true } : null;
 }
