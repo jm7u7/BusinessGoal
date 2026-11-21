@@ -437,7 +437,7 @@ $('#salir').onclick = async () => { await fetch('/api/logout'); location.reload(
 async function get(u) { const r = await fetch(u); if (r.status === 401) location.reload(); return r; }
 
 async function iniciar() {
-  const r = await fetch('/api/me');
+  const r = await fetch('/api/me' + (location.search.includes('login') ? '?sinip=1' : ''));
   if (!r.ok) return;
   st.me = await r.json();
   $('#login').hidden = true; $('#app').hidden = false;

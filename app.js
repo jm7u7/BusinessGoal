@@ -16,6 +16,16 @@ const hoyLocal = () => hoyLima(0);
 const cookieSid = (req, valor, maxAge) =>
   `sid=${valor}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`;
 
+// Acceso por IP: SEDES_IP="lince:172.18.5.,sanisidro:200.10.1.20" (prefijo de IP por sede). Quien abre la página desde esa IP
+// entra directo con esa sede, sin clave. En Vercel se usa la IP pública que reporta Vercel; en local, la del socket.
+const IPS_SEDE = (process.env.SEDES_IP || '').split(',').map((x) => x.trim().split(':')).filter((x) => x.length === 2 && x[0] && x[1]).map(([id, pre]) => ({ id, pre }));
+const ipCliente = (req) => String((process.env.VERCEL && (req.headers['x-vercel-forwarded-for'] || req.headers['x-real-ip'])) || req.socket.remoteAddress || '').split(',')[0].trim().replace(/^::ffff:/, '');
+function usuarioPorIp(req) {
+  const ip = ipCliente(req), m = IPS_SEDE.find((x) => ip.startsWith(x.pre));
+  const s = m && SEDES.find((x) => x.id === m.id);
+  return s ? { usuario: 'ip:' + s.id, nombre: 'Sede ' + s.nombre, sedes: [s.id], porIp: true } : null;
+}
+
 function leerBody(req) {
   return new Promise((ok) => { let b = ''; req.on('data', (c) => { b += c; if (b.length > 1e5) req.destroy(); }); req.on('end', () => { try { ok(JSON.parse(b || '{}')); } catch { ok({}); } }); });
 }
@@ -84,7 +94,7 @@ async function api(req, res, url) {
   if (url.pathname === '/api/logout') {
     return json(res, 200, { ok: true }, { 'Set-Cookie': cookieSid(req, '', 0) });
   }
-  const u = await usuarioDeSesion(cookie(req).sid);
+  const u = (await usuarioDeSesion(cookie(req).sid)) || (url.searchParams.has('sinip') ? null : usuarioPorIp(req));
   if (!u) return json(res, 401, { error: 'No autenticado' });
 
   if (url.pathname === '/api/me') {

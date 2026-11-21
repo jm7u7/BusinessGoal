@@ -2,6 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+require('./env');
 const { api, json } = require('./app');
 
 const PORT = process.env.PORT || 3100;
@@ -17,4 +18,8 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
     fs.createReadStream(f).pipe(res);
   } catch (e) { console.error(e); json(res, 500, { error: 'Error interno' }); }
-}).listen(PORT, () => console.log(`BusinessGoal en http://localhost:${PORT}`));
+}).listen(PORT, '0.0.0.0', () => {
+  console.log(`BusinessGoal en http://localhost:${PORT} (y en la red: http://<IP-de-este-equipo>:${PORT})`);
+  // modo local: este mismo programa trae los datos de Kairos cada INTERVALO_SEG (AGENTE=0 para desactivarlo)
+  if (process.env.AGENTE !== '0') require('./agente/push').iniciar();
+});

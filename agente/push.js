@@ -30,7 +30,7 @@ async function ciclo(todo) {
   console.log(`[${hora()}] OK -> meses ${meses.join(', ')}`);
 }
 
-(async () => {
+async function iniciar() {
   await neon.query(`CREATE TABLE IF NOT EXISTS bg_snapshot (
     clave text PRIMARY KEY, datos jsonb NOT NULL, actualizado timestamptz NOT NULL DEFAULT now())`);
   let primera = true;
@@ -39,4 +39,7 @@ async function ciclo(todo) {
     setTimeout(vuelta, INTERVALO);
   };
   vuelta();
-})();
+}
+
+module.exports = { iniciar };
+if (require.main === module) iniciar();
