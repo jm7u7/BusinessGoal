@@ -92,6 +92,16 @@ async function api(req, res, url) {
     if (!u) return json(res, 401, { error: 'Usuario o clave incorrectos' });
     return json(res, 200, { ok: true }, { 'Set-Cookie': cookieSid(req, crearSesion(u.usuario), DURACION_MS / 1000) });
   }
+  // Enlace secreto de administrador: quien lo tenga entra como administrador sin clave. Se activa con la variable ADMIN_LINK.
+  if (url.pathname === '/api/enlace') {
+    const k = Buffer.from(url.searchParams.get('k') || ''), t = Buffer.from(process.env.ADMIN_LINK || '');
+    if (!t.length || k.length !== t.length || !crypto.timingSafeEqual(k, t)) return json(res, 404, { error: 'No existe' });
+    const admins = (await listarUsuarios()).filter((x) => !x.sedes);
+    const a = admins.find((x) => x.usuario === 'admin') || admins[0];
+    if (!a) return json(res, 500, { error: 'No hay administradores' });
+    res.writeHead(302, { Location: '/', 'Set-Cookie': cookieSid(req, crearSesion(a.usuario), DURACION_MS / 1000), 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    return res.end();
+  }
   if (url.pathname === '/api/logout') {
     return json(res, 200, { ok: true }, { 'Set-Cookie': cookieSid(req, '', 0) });
   }
